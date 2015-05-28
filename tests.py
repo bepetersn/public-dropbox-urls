@@ -15,6 +15,7 @@ class DropBoxResourceTestCase(TestCase):
         document_url = 'https://www.dropbox.com/s/xxxxxxxxxxx/My%20document.docx?dl=1'
         resource = DropBoxResource(document_url)
         self.assertEqual(resource.document_url, document_url)
+        self.assertIsNone(resource.is_public)
 
     @patch('public_dropbox_urls.requests.get')
     def test_resource_init_from_share_url(self, mock_http_get):
@@ -27,6 +28,7 @@ class DropBoxResourceTestCase(TestCase):
         resource = DropBoxResource.from_share_url(share_url)
         self.assertEqual(resource.share_url, share_url)
         self.assertEqual(resource.document_url, expected_document_url)
+        self.assertIsNone(resource.is_public)
 
     @patch('public_dropbox_urls.requests.get')
     def test_resource_resolve_document_url(self, mock_http_get):
@@ -39,6 +41,7 @@ class DropBoxResourceTestCase(TestCase):
         resource = DropBoxResource(document_url)
         resource.resolve()
         self.assertEqual(expected_download_url, resource.download_url)
+        self.assertIs(resource.is_public, True)
 
     @patch('public_dropbox_urls.requests.get')
     def test_resource_resolve_document_url_with_password_protection(self, mock_http_get):
@@ -50,7 +53,7 @@ class DropBoxResourceTestCase(TestCase):
         )
         resource = DropBoxResource(document_url)
         resource.resolve()
-        self.assertFalse(resource.is_public)
+        self.assertIs(resource.is_public, False)
         self.assertIsNone(resource.download_url)
 
     @patch('public_dropbox_urls.requests.get')
@@ -58,10 +61,10 @@ class DropBoxResourceTestCase(TestCase):
         document_url = 'https://www.dropbox.com/s/xxxxxx/document.docx?dl=1'
         mock_http_get.return_value = returner(
             status_code=200,
-            content='<html><title>This document is expired</title> blah blah blah...',
+            content='<html><title>Link expired - Dropbox</title> blah blah blah...',
             headers={}
         )
         resource = DropBoxResource(document_url)
         resource.resolve()
-        self.assertFalse(resource.is_public)
+        self.assertIs(resource.is_public, False)
         self.assertIsNone(resource.download_url)

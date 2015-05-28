@@ -65,5 +65,5 @@ class DropBoxResource(object):
 
     @staticmethod
     def _looks_expired(content):
-        return 'expired' in content
+        return '<title>Link expired - Dropbox</title>' in content
 
