@@ -2,39 +2,57 @@ from urlparse import urlparse
 import requests
 
 
+# Share URL pattern is a shortened link that redirects
+# to the redirect URL; something like:
+# "https://www.dropbox.com/l/xxxxxxxxxxxxxxxxxxxxx"
+SHARE_URL_PATTERN = "https://www\.dropbox\.com/l/.+"
+
+# The redirect URL contains some random-seeming characters
+# as well as the document title and querystring parameters; something like:
+# "https://www.dropbox.com/s/xxxxxxxxxxx/My%20document.docx?dl=0"
+REDIRECT_URL_PATTERN = "https://www\.dropbox\.com/s/.+"
+
+
 class DropBoxResource(object):
     """
     Object responsible for representing a remotely accessible 
     DropBox document. Takes an input_url, which should be the
-    download URL of the document as it can be accessed when 
-    one clicks "Share" in their web application, something like:
+    URL of the document as it can be accessed when one clicks
+    "Share" in their web application, but supplies "dl?=1" as
+    a querystring parameter. Something like:
     'https://www.dropbox.com/s/xxxxxxxxxxx/My%20document.docx?dl=1'.
 
     Alternatively, there is a `from_share_url` method that expects
-    a URL formatted slighly differently, which redirects to the
-    former, and looks something like this:
-    'https://www.dropbox.com/l/xxxxxxxxxxxxxxxxxxxxx'
+    a url formatted as described by SHARE_URL_PATTERN.
+
+    Finally, there is `from_redirect_url`, which expects the
+    same thing as the regular constructor, except the querystring
+    parameters are ignored, and "dl?=1" will be added; see
+    REDIRECT_URL_PATTERN for what this should look like.
     """
 
-    def __init__(self, document_url, share_url=None):
+    def __init__(self, document_url):
         self.document_url = document_url
-        self.share_url = share_url
         self.download_url = None
         self.is_public = None
 
     @classmethod
     def from_share_url(cls, share_url):
         resp = requests.get(share_url, allow_redirects=False)
-        document_web_location = resp.headers.get('location')
+        return cls.from_redirect_url(resp.headers.get('location'))
 
+    @classmethod
+    def from_redirect_url(cls, redirect_url):
         # The redirect location has querystring parameters
         # that make the page render in a way we don't want;
         # remove them and supply '?dl=1', for downloading.
-        parsed_url = urlparse(document_web_location)
-        document_url = parsed_url.scheme + '://' + parsed_url.netloc + parsed_url.path + '?dl=1'
-
-        # pass along the share url for reference
-        return cls(document_url, share_url=share_url)
+        parsed_url = urlparse(redirect_url)
+        document_url = (
+            parsed_url.scheme + '://' +
+            parsed_url.netloc +
+            parsed_url.path + '?dl=1'
+        )
+        return cls(document_url)
 
     def resolve(self):
         resp = requests.get(self.document_url, allow_redirects=False)

@@ -26,7 +26,6 @@ class DropBoxResourceTestCase(TestCase):
             headers={'location': expected_document_url}
         )
         resource = DropBoxResource.from_share_url(share_url)
-        self.assertEqual(resource.share_url, share_url)
         self.assertEqual(resource.document_url, expected_document_url)
         self.assertIsNone(resource.is_public)
 
